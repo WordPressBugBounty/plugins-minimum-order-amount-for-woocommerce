@@ -1,5 +1,4 @@
 <?php
-
 /**
  * The admin-specific functionality of the plugin.
  *
@@ -10,17 +9,32 @@
  * @subpackage Dc_Moafw/admin
  */
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * The admin-specific functionality of the plugin.
- *
- * Defines the plugin name, version, and two examples hooks for how to
- * enqueue the admin-specific stylesheet and JavaScript.
  *
  * @package    Dc_Moafw
  * @subpackage Dc_Moafw/admin
  * @author     Dario Curasì <curasi.d87@gmail.com>
  */
 class Dc_Moafw_Admin {
+
+	/**
+	 * The settings page slug.
+	 *
+	 * @since 1.6.0
+	 * @var   string
+	 */
+	const PAGE_SLUG = 'dc-moafw-menu-page';
+
+	/**
+	 * The settings group name.
+	 *
+	 * @since 1.6.0
+	 * @var   string
+	 */
+	const OPTION_GROUP = 'dc_moafw_options_group';
 
 	/**
 	 * The ID of this plugin.
@@ -41,118 +55,276 @@ class Dc_Moafw_Admin {
 	private $version;
 
 	/**
+	 * The hook suffix of the settings page.
+	 *
+	 * @since    1.6.0
+	 * @access   private
+	 * @var      string|false
+	 */
+	private $page_hook = false;
+
+	/**
 	 * Initialize the class and set its properties.
 	 *
 	 * @since    1.0.0
-	 * @param      string    $plugin_name       The name of this plugin.
-	 * @param      string    $version    The version of this plugin.
+	 * @param    string $plugin_name The name of this plugin.
+	 * @param    string $version     The version of this plugin.
 	 */
 	public function __construct( $plugin_name, $version ) {
 
 		$this->plugin_name = $plugin_name;
-		$this->version = $version;
+		$this->version     = $version;
 
 	}
 
 	/**
 	 * Register the stylesheets for the admin area.
 	 *
+	 * The stylesheet is only loaded on the plugin settings page.
+	 *
 	 * @since    1.0.0
+	 * @param    string $hook_suffix The current admin page.
+	 * @return   void
 	 */
-	public function enqueue_styles() {
+	public function enqueue_styles( $hook_suffix = '' ) {
 
-		/**
-		 * This function is provided for demonstration purposes only.
-		 *
-		 * An instance of this class should be passed to the run() function
-		 * defined in Dc_Moafw_Loader as all of the hooks are defined
-		 * in that particular class.
-		 *
-		 * The Dc_Moafw_Loader will then create the relationship
-		 * between the defined hooks and the functions defined in this
-		 * class.
-		 */
+		if ( ! $this->page_hook || $hook_suffix !== $this->page_hook ) {
+			return;
+		}
 
-		wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/dc-moafw-admin.css', array(), $this->version, 'all' );
+		wp_enqueue_style(
+			$this->plugin_name,
+			plugin_dir_url( __FILE__ ) . 'css/dc-moafw-admin.css',
+			array(),
+			$this->version,
+			'all'
+		);
 
 	}
 
 	/**
-	 * Register the JavaScript for the admin area.
+	 * Register the settings page under the WooCommerce menu.
 	 *
 	 * @since    1.0.0
+	 * @return   void
 	 */
-	public function enqueue_scripts() {
+	public function add_menu_page() {
 
-		/**
-		 * This function is provided for demonstration purposes only.
-		 *
-		 * An instance of this class should be passed to the run() function
-		 * defined in Dc_Moafw_Loader as all of the hooks are defined
-		 * in that particular class.
-		 *
-		 * The Dc_Moafw_Loader will then create the relationship
-		 * between the defined hooks and the functions defined in this
-		 * class.
-		 */
-
-		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/dc-moafw-admin.js', array( 'jquery' ), $this->version, false );
+		$this->page_hook = add_submenu_page(
+			'woocommerce',
+			__( 'Minimum Order Amount for WooCommerce', 'dc-moafw' ),
+			__( 'Minimum Order', 'dc-moafw' ),
+			'manage_woocommerce',
+			self::PAGE_SLUG,
+			array( $this, 'create_admin_interface' )
+		);
 
 	}
 
-	//inizializzazione menu di amministrazione
-	function add_menu_page()
-	{
-	    add_submenu_page('woocommerce','Minimum Order', 'Minimum Order', 'manage_options', 'dc-moafw-menu-page', array( $this,'create_admin_interface' ));
+	/**
+	 * Add a "Settings" link on the plugins list page.
+	 *
+	 * @since    1.6.0
+	 * @param    array $links The existing action links.
+	 * @return   array
+	 */
+	public function add_settings_link( $links ) {
+
+		$settings_link = sprintf(
+			'<a href="%s">%s</a>',
+			esc_url( admin_url( 'admin.php?page=' . self::PAGE_SLUG ) ),
+			esc_html__( 'Settings', 'dc-moafw' )
+		);
+
+		array_unshift( $links, $settings_link );
+
+		return $links;
+
 	}
 
 	/**
 	 * Callback function for the admin settings page.
 	 *
 	 * @since    1.0.0
+	 * @return   void
 	 */
-	public function create_admin_interface(){
+	public function create_admin_interface() {
 
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/partials/dc-moafw-admin-display.php';
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'dc-moafw' ) );
+		}
+
+		require DC_MOAFW_PATH . 'admin/partials/dc-moafw-admin-display.php';
 
 	}
 
 	/**
-	 * Creates our settings sections with fields etc.
+	 * Register the plugin settings, each one with its own sanitize callback.
 	 *
 	 * @since    1.3.0
+	 * @return   void
 	 */
-	public function settings_api_init(){
-		register_setting('dc_moafw_options_group', 'dc_moafw_activate');
-	    register_setting('dc_moafw_options_group', 'dc_moafw_minimum');
-	    register_setting('dc_moafw_options_group', 'dc_moafw_message');
-	    register_setting('dc_moafw_options_group', 'dc_moafw_current_total_text');
-	    register_setting('dc_moafw_options_group', 'dc_moafw_currency_display_type');
-	    register_setting('dc_moafw_options_group', 'dc_moafw_message_shop');
+	public function settings_api_init() {
+
+		register_setting(
+			self::OPTION_GROUP,
+			'dc_moafw_activate',
+			array(
+				'type'              => 'boolean',
+				'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
+				'default'           => 0,
+				'show_in_rest'      => false,
+			)
+		);
+
+		register_setting(
+			self::OPTION_GROUP,
+			'dc_moafw_minimum',
+			array(
+				'type'              => 'number',
+				'sanitize_callback' => array( $this, 'sanitize_amount' ),
+				'default'           => 0,
+				'show_in_rest'      => false,
+			)
+		);
+
+		register_setting(
+			self::OPTION_GROUP,
+			'dc_moafw_message',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_message' ),
+				'default'           => '',
+				'show_in_rest'      => false,
+			)
+		);
+
+		register_setting(
+			self::OPTION_GROUP,
+			'dc_moafw_current_total_text',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_message' ),
+				'default'           => '',
+				'show_in_rest'      => false,
+			)
+		);
+
+		register_setting(
+			self::OPTION_GROUP,
+			'dc_moafw_currency_display_type',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_currency_display_type' ),
+				'default'           => 'text',
+				'show_in_rest'      => false,
+			)
+		);
+
+		register_setting(
+			self::OPTION_GROUP,
+			'dc_moafw_message_shop',
+			array(
+				'type'              => 'boolean',
+				'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
+				'default'           => 0,
+				'show_in_rest'      => false,
+			)
+		);
+
 	}
 
+	/**
+	 * Sanitize a checkbox value.
+	 *
+	 * @since    1.6.0
+	 * @param    mixed $value The submitted value.
+	 * @return   int
+	 */
+	public function sanitize_checkbox( $value ) {
+		return empty( $value ) ? 0 : 1;
+	}
 
 	/**
-	 * error_notice
+	 * Sanitize the minimum order amount.
+	 *
+	 * @since    1.6.0
+	 * @param    mixed $value The submitted value.
+	 * @return   string
+	 */
+	public function sanitize_amount( $value ) {
+
+		$value = str_replace( ',', '.', trim( (string) $value ) );
+		$value = (float) preg_replace( '/[^0-9.]/', '', $value );
+
+		if ( $value < 0 ) {
+			$value = 0;
+		}
+
+		if ( function_exists( 'wc_format_decimal' ) ) {
+			return wc_format_decimal( $value, false, true );
+		}
+
+		return (string) $value;
+
+	}
+
+	/**
+	 * Sanitize a notice message.
+	 *
+	 * @since    1.6.0
+	 * @param    mixed $value The submitted value.
+	 * @return   string
+	 */
+	public function sanitize_message( $value ) {
+		return wp_kses_post( trim( (string) $value ) );
+	}
+
+	/**
+	 * Sanitize the currency display type.
+	 *
+	 * @since    1.6.0
+	 * @param    mixed $value The submitted value.
+	 * @return   string
+	 */
+	public function sanitize_currency_display_type( $value ) {
+		return ( 'symbol' === $value ) ? 'symbol' : 'text';
+	}
+
+	/**
+	 * Show an admin notice when WooCommerce is not available.
 	 *
 	 * @since    1.1.0
+	 * @return   void
 	 */
 	public function error_notice() {
-		echo '<div class="notice notice-error is-dismissible">
-        		<p>'.__('Minimum Order Amount for Woocommerce is active but does not work. You need to install WooCommerce because the plugin is working properly.', 'dc-moafw').'</p>
-    		  </div>';
+
+		if ( Dc_Moafw_Public::is_woocommerce_active() || ! current_user_can( 'activate_plugins' ) ) {
+			return;
+		}
+
+		printf(
+			'<div class="notice notice-error is-dismissible"><p>%s</p></div>',
+			esc_html__( 'Minimum Order Amount for WooCommerce is active but does not work. You need to install and activate WooCommerce for the plugin to work properly.', 'dc-moafw' )
+		);
+
 	}
 
 	/**
-	 * register string in polylang
+	 * Register the translatable strings in Polylang.
 	 *
 	 * @since    1.2.0
+	 * @return   void
 	 */
-	public function dc_moafw_register_string_polylang() {
-		if (function_exists('pll_register_string')) {
-			pll_register_string('message', get_option('dc_moafw_message'), 'dc-moafw');
-			pll_register_string('current_total_text', get_option('dc_moafw_current_total_text'), 'dc-moafw');
+	public function register_string_polylang() {
+
+		if ( ! function_exists( 'pll_register_string' ) ) {
+			return;
 		}
+
+		pll_register_string( 'message', (string) get_option( 'dc_moafw_message' ), 'dc-moafw', true );
+		pll_register_string( 'current_total_text', (string) get_option( 'dc_moafw_current_total_text' ), 'dc-moafw' );
+
 	}
 
 }

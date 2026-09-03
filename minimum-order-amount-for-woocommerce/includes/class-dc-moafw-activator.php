@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Fired during plugin activation
  *
@@ -9,6 +8,8 @@
  * @package    Dc_Moafw
  * @subpackage Dc_Moafw/includes
  */
+
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Fired during plugin activation.
@@ -23,19 +24,25 @@
 class Dc_Moafw_Activator {
 
 	/**
-	 * Short Description. (use period)
+	 * Create the default options.
 	 *
-	 * Long Description.
+	 * Existing options are left untouched, so that the settings survive a
+	 * deactivate/activate cycle.
 	 *
 	 * @since    1.3.0
+	 * @return   void
 	 */
 	public static function activate() {
-		add_option('dc_moafw_activate', 1);
-		add_option('dc_moafw_minimum', 50);
-		add_option('dc_moafw_message', __('A Minimum of [minimum] is required before checking out.', 'dc-moafw'));
-		add_option('dc_moafw_current_total_text', __("Current cart's total: [current]", 'dc-moafw'));
-		add_option('dc_moafw_currency_display_type', "text");
-		add_option('dc_moafw_message_shop', 0);
+
+		add_option( 'dc_moafw_activate', 1 );
+		add_option( 'dc_moafw_minimum', 50 );
+		/* translators: [minimum] is a placeholder replaced by the minimum order amount. */
+		add_option( 'dc_moafw_message', __( 'A Minimum of [minimum] is required before checking out.', 'dc-moafw' ) );
+		/* translators: [current] is a placeholder replaced by the current cart total. */
+		add_option( 'dc_moafw_current_total_text', __( "Current cart's total: [current]", 'dc-moafw' ) );
+		add_option( 'dc_moafw_currency_display_type', 'text' );
+		add_option( 'dc_moafw_message_shop', 0 );
+
 	}
 
 }

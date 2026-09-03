@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Define the internationalization functionality
  *
@@ -13,11 +12,10 @@
  * @subpackage Dc_Moafw/includes
  */
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Define the internationalization functionality.
- *
- * Loads and defines the internationalization files for this plugin
- * so that it is ready for translation.
  *
  * @since      1.0.0
  * @package    Dc_Moafw
@@ -26,22 +24,22 @@
  */
 class Dc_Moafw_i18n {
 
-
 	/**
 	 * Load the plugin text domain for translation.
 	 *
+	 * Runs on `init`, as required since WordPress 6.7.
+	 *
 	 * @since    1.0.0
+	 * @return   void
 	 */
 	public function load_plugin_textdomain() {
 
 		load_plugin_textdomain(
 			'dc-moafw',
 			false,
-			dirname( dirname( plugin_basename( __FILE__ ) ) ) . '/languages/'
+			dirname( DC_MOAFW_BASENAME ) . '/languages/'
 		);
 
 	}
-
-
 
 }

@@ -1,57 +1,67 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Dario Curasi
+# This file is distributed under the same license as the Minimum Order Amount for WooCommerce package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Minimum Order Amount for Woocommerce\n"
-"POT-Creation-Date: 2018-01-02 13:18+0100\n"
-"PO-Revision-Date: 2017-01-07 19:04+0100\n"
-"Last-Translator: \n"
-"Language-Team: Dario Curasì <curasi.d87@gmail.com>\n"
-"Language: en\n"
+"Project-Id-Version: Minimum Order Amount for WooCommerce 1.6.0\n"
+"Report-Msgid-Bugs-To: curasi.d87@gmail.com\n"
+"POT-Creation-Date: 2026-09-03 18:05+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 2.0.5\n"
-"X-Poedit-Basepath: ..\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Poedit-SourceCharset: UTF-8\n"
-"X-Poedit-KeywordsList: __;_e\n"
-"X-Poedit-SearchPath-0: .\n"
 
-#: admin/class-dc-moafw-admin.php:142
-msgid ""
-"Minimum Order Amount for Woocommerce is active but does not work. You need "
-"to install WooCommerce because the plugin is working properly."
-msgstr ""
-
+#: admin/class-dc-moafw-admin.php:115
 #: admin/partials/dc-moafw-admin-display.php:17
-msgid "Minimum Order Amount for Woocommerce"
+msgid "Minimum Order Amount for WooCommerce"
 msgstr ""
 
-#: admin/partials/dc-moafw-admin-display.php:22
-msgid "Configuration"
-msgstr ""
-
-#: admin/partials/dc-moafw-admin-display.php:27
-msgid "Enable / Disable"
-msgstr ""
-
-#: admin/partials/dc-moafw-admin-display.php:31
-msgid "Activate Options"
-msgstr ""
-
-#: admin/partials/dc-moafw-admin-display.php:37
+#: admin/class-dc-moafw-admin.php:116
+#: admin/partials/dc-moafw-admin-display.php:42
 msgid "Minimum Order"
 msgstr ""
 
-#: admin/partials/dc-moafw-admin-display.php:42
+#: admin/class-dc-moafw-admin.php:136
+msgid "Settings"
+msgstr ""
+
+#: admin/class-dc-moafw-admin.php:154
+msgid "You do not have sufficient permissions to access this page."
+msgstr ""
+
+#: admin/class-dc-moafw-admin.php:308
+msgid ""
+"Minimum Order Amount for WooCommerce is active but does not work. You need "
+"to install and activate WooCommerce for the plugin to work properly."
+msgstr ""
+
+#: admin/partials/dc-moafw-admin-display.php:25
+msgid "Configuration"
+msgstr ""
+
+#: admin/partials/dc-moafw-admin-display.php:31
+msgid "Enable / Disable"
+msgstr ""
+
+#: admin/partials/dc-moafw-admin-display.php:36
+msgid "Activate Options"
+msgstr ""
+
+#: admin/partials/dc-moafw-admin-display.php:46
 msgid "The minimum amount with which you can place your order."
 msgstr ""
 
-#: admin/partials/dc-moafw-admin-display.php:48
+#: admin/partials/dc-moafw-admin-display.php:51
 msgid "Message"
 msgstr ""
 
-#: admin/partials/dc-moafw-admin-display.php:54
+#: admin/partials/dc-moafw-admin-display.php:55
 msgid ""
 "The notice message that appears if the minimum amount is not reached. Insert "
 "[minimum] in the position where you want to show the minimum value in the "
@@ -62,35 +72,35 @@ msgstr ""
 msgid "Current Total Text"
 msgstr ""
 
-#: admin/partials/dc-moafw-admin-display.php:65
+#: admin/partials/dc-moafw-admin-display.php:64
 msgid ""
 "The text of the current cart total. Insert [current] in the position where "
-"you want to show the current cart total."
+"you want to show the current cart total. Leave it empty to hide it."
 msgstr ""
 
-#: admin/partials/dc-moafw-admin-display.php:71
+#: admin/partials/dc-moafw-admin-display.php:69
 msgid "Currency Display Type"
 msgstr ""
 
-#: admin/partials/dc-moafw-admin-display.php:75
+#: admin/partials/dc-moafw-admin-display.php:73
 msgid "Symbol"
 msgstr ""
 
-#: admin/partials/dc-moafw-admin-display.php:76
+#: admin/partials/dc-moafw-admin-display.php:74
 msgid "Text"
 msgstr ""
 
-#: admin/partials/dc-moafw-admin-display.php:78
+#: admin/partials/dc-moafw-admin-display.php:76
 msgid ""
-"The way the currency appears in the notification message (i.e. \"&euro;\" if "
-"is \"symbol\", \"EUR\" if is \"text\")."
+"The way the currency appears in the notification message (i.e. \"€\" if is "
+"\"symbol\", \"EUR\" if is \"text\")."
 msgstr ""
 
-#: admin/partials/dc-moafw-admin-display.php:83
+#: admin/partials/dc-moafw-admin-display.php:81
 msgid "Show message in the shop"
 msgstr ""
 
-#: admin/partials/dc-moafw-admin-display.php:87
+#: admin/partials/dc-moafw-admin-display.php:86
 msgid "Enable"
 msgstr ""
 
@@ -100,10 +110,12 @@ msgid ""
 "(Note: the message will not be displayed if the cart is empty)"
 msgstr ""
 
-#: includes/class-dc-moafw-activator.php:35
+#. translators: [minimum] is a placeholder replaced by the minimum order amount.
+#: includes/class-dc-moafw-activator.php:40
 msgid "A Minimum of [minimum] is required before checking out."
 msgstr ""
 
-#: includes/class-dc-moafw-activator.php:36
+#. translators: [current] is a placeholder replaced by the current cart total.
+#: includes/class-dc-moafw-activator.php:42
 msgid "Current cart's total: [current]"
 msgstr ""

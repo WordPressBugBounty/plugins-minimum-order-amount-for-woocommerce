@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Fired during plugin deactivation
  *
@@ -10,10 +9,13 @@
  * @subpackage Dc_Moafw/includes
  */
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Fired during plugin deactivation.
  *
- * This class defines all code necessary to run during the plugin's deactivation.
+ * The settings are intentionally preserved on deactivation; they are removed
+ * on uninstall only (see uninstall.php).
  *
  * @since      1.0.0
  * @package    Dc_Moafw
@@ -23,14 +25,11 @@
 class Dc_Moafw_Deactivator {
 
 	/**
-	 * Short Description. (use period)
-	 *
-	 * Long Description.
+	 * Nothing to clean up on deactivation.
 	 *
 	 * @since    1.3.0
+	 * @return   void
 	 */
-	public static function deactivate() {
-		
-	}
+	public static function deactivate() {}
 
 }

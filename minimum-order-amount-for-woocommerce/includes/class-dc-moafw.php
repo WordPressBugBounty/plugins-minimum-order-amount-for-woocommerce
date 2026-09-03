@@ -1,5 +1,4 @@
 <?php
-
 /**
  * The file that defines the core plugin class
  *
@@ -12,6 +11,8 @@
  * @package    Dc_Moafw
  * @subpackage Dc_Moafw/includes
  */
+
+defined( 'ABSPATH' ) || exit;
 
 /**
  * The core plugin class.
@@ -60,16 +61,12 @@ class Dc_Moafw {
 	/**
 	 * Define the core functionality of the plugin.
 	 *
-	 * Set the plugin name and the plugin version that can be used throughout the plugin.
-	 * Load the dependencies, define the locale, and set the hooks for the admin area and
-	 * the public-facing side of the site.
-	 *
 	 * @since    1.2.0
 	 */
 	public function __construct() {
 
 		$this->plugin_name = 'dc-moafw';
-		$this->version = '1.5.0';
+		$this->version     = defined( 'DC_MOAFW_VERSION' ) ? DC_MOAFW_VERSION : '1.6.0';
 
 		$this->load_dependencies();
 		$this->set_locale();
@@ -81,43 +78,16 @@ class Dc_Moafw {
 	/**
 	 * Load the required dependencies for this plugin.
 	 *
-	 * Include the following files that make up the plugin:
-	 *
-	 * - Dc_Moafw_Loader. Orchestrates the hooks of the plugin.
-	 * - Dc_Moafw_i18n. Defines internationalization functionality.
-	 * - Dc_Moafw_Admin. Defines all hooks for the admin area.
-	 * - Dc_Moafw_Public. Defines all hooks for the public side of the site.
-	 *
-	 * Create an instance of the loader which will be used to register the hooks
-	 * with WordPress.
-	 *
 	 * @since    1.0.0
 	 * @access   private
+	 * @return   void
 	 */
 	private function load_dependencies() {
 
-		/**
-		 * The class responsible for orchestrating the actions and filters of the
-		 * core plugin.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dc-moafw-loader.php';
-
-		/**
-		 * The class responsible for defining internationalization functionality
-		 * of the plugin.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-dc-moafw-i18n.php';
-
-		/**
-		 * The class responsible for defining all actions that occur in the admin area.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-dc-moafw-admin.php';
-
-		/**
-		 * The class responsible for defining all actions that occur in the public-facing
-		 * side of the site.
-		 */
-		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-dc-moafw-public.php';
+		require_once DC_MOAFW_PATH . 'includes/class-dc-moafw-loader.php';
+		require_once DC_MOAFW_PATH . 'includes/class-dc-moafw-i18n.php';
+		require_once DC_MOAFW_PATH . 'admin/class-dc-moafw-admin.php';
+		require_once DC_MOAFW_PATH . 'public/class-dc-moafw-public.php';
 
 		$this->loader = new Dc_Moafw_Loader();
 
@@ -126,17 +96,17 @@ class Dc_Moafw {
 	/**
 	 * Define the locale for this plugin for internationalization.
 	 *
-	 * Uses the Dc_Moafw_i18n class in order to set the domain and to register the hook
-	 * with WordPress.
+	 * Translations are loaded on `init` as required since WordPress 6.7.
 	 *
 	 * @since    1.0.0
 	 * @access   private
+	 * @return   void
 	 */
 	private function set_locale() {
 
 		$plugin_i18n = new Dc_Moafw_i18n();
 
-		$this->loader->add_action( 'plugins_loaded', $plugin_i18n, 'load_plugin_textdomain' );
+		$this->loader->add_action( 'init', $plugin_i18n, 'load_plugin_textdomain' );
 
 	}
 
@@ -146,21 +116,22 @@ class Dc_Moafw {
 	 *
 	 * @since    1.3.0
 	 * @access   private
+	 * @return   void
 	 */
 	private function define_admin_hooks() {
+
+		if ( ! is_admin() ) {
+			return;
+		}
 
 		$plugin_admin = new Dc_Moafw_Admin( $this->get_plugin_name(), $this->get_version() );
 
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
-		//$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
 		$this->loader->add_action( 'admin_menu', $plugin_admin, 'add_menu_page' );
 		$this->loader->add_action( 'admin_init', $plugin_admin, 'settings_api_init' );
-		if ( !in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
-			$this->loader->add_action( 'admin_notices', $plugin_admin, 'error_notice' );
-		}
-		if ( in_array( 'polylang/polylang.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) || in_array( 'polylang-pro/polylang.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
-			$this->loader->add_action( 'plugins_loaded', $plugin_admin, 'dc_moafw_register_string_polylang' );
-		}
+		$this->loader->add_action( 'admin_notices', $plugin_admin, 'error_notice' );
+		$this->loader->add_action( 'init', $plugin_admin, 'register_string_polylang' );
+		$this->loader->add_filter( 'plugin_action_links_' . DC_MOAFW_BASENAME, $plugin_admin, 'add_settings_link' );
 
 	}
 
@@ -168,29 +139,31 @@ class Dc_Moafw {
 	 * Register all of the hooks related to the public-facing functionality
 	 * of the plugin.
 	 *
+	 * The hooks are always registered; the callbacks bail out early when
+	 * WooCommerce is missing or the plugin is disabled, so that the option
+	 * values are never read too early in the request life cycle.
+	 *
 	 * @since    1.2.0
 	 * @access   private
+	 * @return   void
 	 */
 	private function define_public_hooks() {
 
 		$plugin_public = new Dc_Moafw_Public( $this->get_plugin_name(), $this->get_version() );
 
-		if( get_option( 'dc_moafw_activate' ) ) {
-			if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
-				//$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
-				//$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
-				$this->loader->add_action( 'woocommerce_check_cart_items', $plugin_public, 'dc_moafw_set_minimum_order' );
-				if( get_option( 'dc_moafw_message_shop' ) ) {
-					$this->loader->add_filter( 'woocommerce_before_main_content', $plugin_public, 'dc_moafw_set_minimum_order' );
-				}
-			}
-		}
+		// Cart, checkout and Store API (block cart/checkout) validation.
+		$this->loader->add_action( 'woocommerce_check_cart_items', $plugin_public, 'check_minimum_order' );
+
+		// Optional notice on the shop pages.
+		$this->loader->add_action( 'woocommerce_before_main_content', $plugin_public, 'shop_minimum_order_notice' );
+
 	}
 
 	/**
 	 * Run the loader to execute all of the hooks with WordPress.
 	 *
 	 * @since    1.0.0
+	 * @return   void
 	 */
 	public function run() {
 		$this->loader->run();

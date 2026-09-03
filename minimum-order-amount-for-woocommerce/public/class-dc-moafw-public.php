@@ -1,5 +1,4 @@
 <?php
-
 /**
  * The public-facing functionality of the plugin.
  *
@@ -10,11 +9,10 @@
  * @subpackage Dc_Moafw/public
  */
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * The public-facing functionality of the plugin.
- *
- * Defines the plugin name, version, and two examples hooks for how to
- * enqueue the admin-specific stylesheet and JavaScript.
  *
  * @package    Dc_Moafw
  * @subpackage Dc_Moafw/public
@@ -44,207 +42,322 @@ class Dc_Moafw_Public {
 	 * Initialize the class and set its properties.
 	 *
 	 * @since    1.0.0
-	 * @param      string    $plugin_name       The name of the plugin.
-	 * @param      string    $version    The version of this plugin.
+	 * @param    string $plugin_name The name of the plugin.
+	 * @param    string $version     The version of this plugin.
 	 */
 	public function __construct( $plugin_name, $version ) {
 
 		$this->plugin_name = $plugin_name;
-		$this->version = $version;
+		$this->version     = $version;
 
 	}
 
 	/**
-	 * Register the stylesheets for the public-facing side of the site.
+	 * Check whether WooCommerce is available.
 	 *
-	 * @since    1.0.0
+	 * @since    1.6.0
+	 * @return   bool
 	 */
-	public function enqueue_styles() {
+	public static function is_woocommerce_active() {
+		return class_exists( 'WooCommerce' );
+	}
+
+	/**
+	 * Check whether the plugin features are enabled.
+	 *
+	 * @since    1.6.0
+	 * @access   private
+	 * @return   bool
+	 */
+	private function is_enabled() {
+		return self::is_woocommerce_active() && (bool) get_option( 'dc_moafw_activate' );
+	}
+
+	/**
+	 * Validate the cart against the configured minimum order amount.
+	 *
+	 * Hooked on `woocommerce_check_cart_items`, which is fired by the classic
+	 * cart and checkout pages as well as by the Store API used by the Cart and
+	 * Checkout blocks.
+	 *
+	 * @since    1.6.0
+	 * @return   void
+	 */
+	public function check_minimum_order() {
+
+		if ( ! $this->is_enabled() ) {
+			return;
+		}
+
+		$total = $this->get_cart_subtotal();
+
+		if ( null === $total || $total <= 0 ) {
+			return;
+		}
+
+		$minimum = $this->get_minimum_order_amount();
+
+		if ( $minimum <= 0 || $total >= $minimum ) {
+			return;
+		}
+
+		$notice = '<strong>' . $this->get_message( $minimum ) . '</strong>';
+
+		$current_total_text = $this->get_current_total_text( $total );
+
+		if ( '' !== $current_total_text ) {
+			$notice .= '<br />' . $current_total_text;
+		}
+
+		$this->add_notice( $notice );
+
+	}
+
+	/**
+	 * Display the minimum order notice on the shop pages, when enabled.
+	 *
+	 * @since    1.6.0
+	 * @return   void
+	 */
+	public function shop_minimum_order_notice() {
+
+		if ( ! $this->is_enabled() || ! get_option( 'dc_moafw_message_shop' ) ) {
+			return;
+		}
+
+		// The cart and the checkout are already handled by check_minimum_order().
+		if ( is_cart() || is_checkout() ) {
+			return;
+		}
+
+		$total = $this->get_cart_subtotal();
+
+		if ( null === $total || $total <= 0 ) {
+			return;
+		}
+
+		$minimum = $this->get_minimum_order_amount();
+
+		if ( $minimum <= 0 || $total >= $minimum ) {
+			return;
+		}
+
+		$this->add_notice( '<strong>' . $this->get_message( $minimum ) . '</strong>' );
+
+	}
+
+	/**
+	 * Add an error notice, avoiding duplicates.
+	 *
+	 * @since    1.6.0
+	 * @access   private
+	 * @param    string $notice The notice HTML.
+	 * @return   void
+	 */
+	private function add_notice( $notice ) {
+
+		if ( ! function_exists( 'wc_add_notice' ) || ( function_exists( 'wc_has_notice' ) && wc_has_notice( $notice, 'error' ) ) ) {
+			return;
+		}
+
+		wc_add_notice( $notice, 'error' );
+
+	}
+
+	/**
+	 * Get the cart subtotal, before taxes and shipping.
+	 *
+	 * @since    1.6.0
+	 * @access   private
+	 * @return   float|null Null when the cart is not available.
+	 */
+	private function get_cart_subtotal() {
+
+		if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+			return null;
+		}
+
+		return round( (float) WC()->cart->get_subtotal(), wc_get_price_decimals() );
+
+	}
+
+	/**
+	 * Get the minimum order amount, converted to the active currency when
+	 * WooCommerce Price Based on Country is in use.
+	 *
+	 * @since    1.6.0
+	 * @access   private
+	 * @return   float
+	 */
+	private function get_minimum_order_amount() {
+
+		$minimum = (float) get_option( 'dc_moafw_minimum' );
+		$zone    = $this->get_wcpbc_zone();
+
+		if ( $zone ) {
+			$minimum *= (float) $this->get_wcpbc_exchange_rate( $zone );
+		}
 
 		/**
-		 * This function is provided for demonstration purposes only.
+		 * Filters the minimum order amount.
 		 *
-		 * An instance of this class should be passed to the run() function
-		 * defined in Dc_Moafw_Loader as all of the hooks are defined
-		 * in that particular class.
-		 *
-		 * The Dc_Moafw_Loader will then create the relationship
-		 * between the defined hooks and the functions defined in this
-		 * class.
+		 * @since 1.6.0
+		 * @param float $minimum The minimum order amount, in the active currency.
 		 */
-
-		wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/dc-moafw-public.css', array(), $this->version, 'all' );
+		return (float) apply_filters( 'dc_moafw_minimum_order_amount', $minimum );
 
 	}
 
 	/**
-	 * Register the JavaScript for the public-facing side of the site.
+	 * Get the active WooCommerce Price Based on Country zone, if any.
 	 *
-	 * @since    1.0.0
-	 */
-	public function enqueue_scripts() {
-
-		/**
-		 * This function is provided for demonstration purposes only.
-		 *
-		 * An instance of this class should be passed to the run() function
-		 * defined in Dc_Moafw_Loader as all of the hooks are defined
-		 * in that particular class.
-		 *
-		 * The Dc_Moafw_Loader will then create the relationship
-		 * between the defined hooks and the functions defined in this
-		 * class.
-		 */
-
-		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/dc-moafw-public.js', array( 'jquery' ), $this->version, false );
-
-	}
-
-	/**
-	 * Set a minimum dollar amount per order
+	 * Supports both the current API (wcpbc_the_zone) and the legacy
+	 * WCPBC_Customer class.
 	 *
-	 * @since    1.3.1
+	 * @since    1.6.0
+	 * @access   private
+	 * @return   object|false
 	 */
-	public function dc_moafw_set_minimum_order() {
-        global $woocommerce;
-        if ( in_array( 'woocommerce-product-price-based-on-countries/woocommerce-product-price-based-on-countries.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
-        	$wcpbc_values = new WCPBC_Customer();
-        }
-        else {
-        	$wcpbc_values = null;
-        }
- 		$wcpbc_currency_active = $this->dc_moafw_wcpbc_currency_is_active($wcpbc_values);
+	private function get_wcpbc_zone() {
 
-    	$message = $this->dc_moafw_get_message();
-    	$current_cart_text = $this->dc_moafw_get_current_cart_text();
-		$decimal_separator = wc_get_price_decimal_separator();
-		$thousand_separator = wc_get_price_thousand_separator();
-		$num_decimals = wc_get_price_decimals();
+		if ( function_exists( 'wcpbc_the_zone' ) ) {
+			$zone = wcpbc_the_zone();
 
-        // Total we are going to be using for the Math
-        // This is before taxes and shipping charges
-        $total = round(WC()->cart->subtotal, $num_decimals);
-        //print_r(WC()->cart->subtotal_ex_tax);
-        if( (is_cart() || is_checkout()) && $total) {
-		    if($wcpbc_currency_active) {
-		        // Set minimum cart total
-		        $minimum_cart_total = get_option('dc_moafw_minimum') * $wcpbc_values->exchange_rate;
-
-		        if( $total < $minimum_cart_total  ) {
-		            // Display our error message
-		            wc_add_notice( sprintf( '<strong>'.$message.'</strong>'
-		                .'<br />'.$current_cart_text,
-		                $this->dc_moafw_get_currency_display_type($wcpbc_values),
-		                number_format($minimum_cart_total, $num_decimals, $decimal_separator, $thousand_separator),
-		                $this->dc_moafw_get_currency_display_type($wcpbc_values),
-		                number_format($total, $num_decimals, $decimal_separator, $thousand_separator) ),
-		            'error' );
-		        }
-		    }
-		    else {
-		    	// Set minimum cart total
-		        $minimum_cart_total = get_option('dc_moafw_minimum');
-
-		        if( $total < $minimum_cart_total  ) {
-		            // Display our error message
-		            wc_add_notice( sprintf( '<strong>'.$message.'</strong>'
-		                .'<br />'.$current_cart_text,
-		                $this->dc_moafw_get_currency_display_type($wcpbc_values),
-		                number_format($minimum_cart_total, $num_decimals, $decimal_separator, $thousand_separator),
-		                $this->dc_moafw_get_currency_display_type($wcpbc_values),
-		                number_format($total, $num_decimals, $decimal_separator, $thousand_separator) ),
-		            'error' );
-		        }
-		    }
+			return $zone ? $zone : false;
 		}
-		elseif(get_option( 'dc_moafw_message_shop' ) && $total) {
-			if($wcpbc_currency_active) {
-		        // Set minimum cart total
-		        $minimum_cart_total = get_option('dc_moafw_minimum') * $wcpbc_values->exchange_rate;
 
-		        if( $total < $minimum_cart_total  ) {
-		            // Display our error message
-		            wc_add_notice( sprintf( '<strong>'.$message.'</strong>',
-		                $this->dc_moafw_get_currency_display_type($wcpbc_values),
-		                number_format($minimum_cart_total, $num_decimals, $decimal_separator, $thousand_separator) ),
-		            'error' );
-		        }
-		    }
-		    else {
-		    	// Set minimum cart total
-		        $minimum_cart_total = get_option('dc_moafw_minimum');
+		if ( class_exists( 'WCPBC_Customer' ) ) {
+			$customer = new WCPBC_Customer();
 
-		        if( $total < $minimum_cart_total  ) {
-		            // Display our error message
-		            wc_add_notice( sprintf( '<strong>'.$message.'</strong>',
-		                $this->dc_moafw_get_currency_display_type($wcpbc_values),
-		                number_format($minimum_cart_total, $num_decimals, $decimal_separator, $thousand_separator) ),
-		            'error' );
-		        }
-		    }
+			return ! empty( $customer->zone_id ) ? $customer : false;
 		}
+
+		return false;
+
 	}
 
 	/**
-	 * Check if woocommerce-product-price-based-on-countries is active and have a currency
+	 * Get the exchange rate of a WooCommerce Price Based on Country zone.
+	 *
+	 * @since    1.6.0
+	 * @access   private
+	 * @param    object $zone The zone or legacy customer object.
+	 * @return   float
+	 */
+	private function get_wcpbc_exchange_rate( $zone ) {
+
+		if ( is_callable( array( $zone, 'get_exchange_rate' ) ) ) {
+			$rate = (float) $zone->get_exchange_rate();
+		} elseif ( isset( $zone->exchange_rate ) ) {
+			$rate = (float) $zone->exchange_rate;
+		} else {
+			$rate = 1.0;
+		}
+
+		return $rate > 0 ? $rate : 1.0;
+
+	}
+
+	/**
+	 * Get the currency, either as a symbol or as a currency code, according to
+	 * the plugin settings.
 	 *
 	 * @since    1.3.0
+	 * @return   string
 	 */
-	public function dc_moafw_wcpbc_currency_is_active($wcpbc_values) {
-		if ( in_array( 'woocommerce-product-price-based-on-countries/woocommerce-product-price-based-on-countries.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
-	        if ( $wcpbc_values->zone_id ) {
-	        	return true;
-	        }
+	public function get_currency_display() {
 
-	        return false;
-	    }
+		$zone = $this->get_wcpbc_zone();
 
-	    return false;
-	}
+		if ( 'symbol' === get_option( 'dc_moafw_currency_display_type' ) ) {
+			return get_woocommerce_currency_symbol();
+		}
 
-	/**
-	 * Get a currency display type
-	 *
-	 * @since    1.3.0
-	 */
-	public function dc_moafw_get_currency_display_type($wcpbc_values) {
-		if(get_option('dc_moafw_currency_display_type') != "symbol") {
-			if($this->dc_moafw_wcpbc_currency_is_active($wcpbc_values)) {
-				return $wcpbc_values->currency;
+		if ( $zone ) {
+			if ( is_callable( array( $zone, 'get_currency' ) ) ) {
+				return (string) $zone->get_currency();
 			}
 
-			return get_option( 'woocommerce_currency');
+			if ( isset( $zone->currency ) ) {
+				return (string) $zone->currency;
+			}
 		}
 
-		return get_woocommerce_currency_symbol();
+		return get_woocommerce_currency();
+
 	}
 
 	/**
-	 * Get a message
+	 * Format an amount using the WooCommerce currency settings.
 	 *
-	 * @since    1.5.0
+	 * @since    1.6.0
+	 * @access   private
+	 * @param    float $amount The amount to format.
+	 * @return   string
 	 */
-	public function dc_moafw_get_message() {
-		$price_format = get_woocommerce_price_format();
-		if ( ( in_array( 'polylang/polylang.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) || in_array( 'polylang-pro/polylang.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) && function_exists('pll__') ) {
-        	return str_replace('[minimum]', $price_format, pll__(get_option('dc_moafw_message')));
+	private function format_price( $amount ) {
 
-        }
+		$formatted = number_format(
+			(float) $amount,
+			wc_get_price_decimals(),
+			wc_get_price_decimal_separator(),
+			wc_get_price_thousand_separator()
+		);
 
-        return str_replace('[minimum]', $price_format, get_option('dc_moafw_message'));
+		return sprintf( get_woocommerce_price_format(), $this->get_currency_display(), $formatted );
+
 	}
 
 	/**
-	 * Get a current cart text
+	 * Translate an option value through Polylang, when available.
+	 *
+	 * @since    1.6.0
+	 * @access   private
+	 * @param    string $value The string to translate.
+	 * @return   string
+	 */
+	private function translate( $value ) {
+
+		if ( function_exists( 'pll__' ) ) {
+			return (string) pll__( $value );
+		}
+
+		return $value;
+
+	}
+
+	/**
+	 * Get the "minimum order" message, with the amount placeholder replaced.
 	 *
 	 * @since    1.5.0
+	 * @param    float $minimum The minimum order amount.
+	 * @return   string
 	 */
-	public function dc_moafw_get_current_cart_text() {
-		$price_format = str_replace(array('1', '2'), array('3', '4'), get_woocommerce_price_format());
-		if ( ( in_array( 'polylang/polylang.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) || in_array( 'polylang-pro/polylang.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) && function_exists('pll__') ) {
-        	return str_replace('[current]', $price_format, pll__(get_option('dc_moafw_current_total_text')));
-        }
-        	return str_replace('[current]', $price_format, get_option('dc_moafw_current_total_text'));
+	public function get_message( $minimum ) {
+
+		$message = $this->translate( (string) get_option( 'dc_moafw_message' ) );
+
+		return str_replace( '[minimum]', $this->format_price( $minimum ), $message );
+
+	}
+
+	/**
+	 * Get the "current total" text, with the amount placeholder replaced.
+	 *
+	 * @since    1.5.0
+	 * @param    float $total The current cart subtotal.
+	 * @return   string
+	 */
+	public function get_current_total_text( $total ) {
+
+		$text = $this->translate( (string) get_option( 'dc_moafw_current_total_text' ) );
+
+		if ( '' === trim( $text ) ) {
+			return '';
+		}
+
+		return str_replace( '[current]', $this->format_price( $total ), $text );
+
 	}
 
 }
